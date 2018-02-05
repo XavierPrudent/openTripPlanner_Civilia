@@ -1,0 +1,72 @@
+# The maximum distance (in meters) the user is willing to walk in total during the trip
+maxWalkDistance:3000
+
+# The maximum distance (in meters) the user is willing to walk for transfer legs
+# DOESN'T WORK
+# maxTransferWalkDistance:1000
+
+# The maximum duration of a returned itinerary, in hours
+maxHours:5
+
+# Whether maxHours limit should consider wait/idle time between the itinerary and the requested arrive/depart time.
+# NOT SURE IF WORKING PROPERLY
+# useRequestedDateTimeInMaxHours = false;
+
+# The set of TraverseModes that a user is willing to use (TRANSIT, WALK, CAR)
+mode:TRANSIT,WALK
+
+# Whether the trip must be wheelchair accessible
+# DOESN'T WORK
+# wheelchairAccessible:false
+
+#The maximum number of itineraries to return
+numItineraries:3
+
+# max walk speed along streets, in meters per second
+walkSpeed:1.33
+
+# max bike speed along streets, in meters per second (5.5m/s ~ 20 km/h)
+# bikeSpeed:5.5
+
+# max car speed, in meters per second
+carSpeed:33
+
+# A multiplier for how bad walking is, compared to being in transit for equal lengths of time.
+# Defaults to 2. Empirically, values between 10 and 20 seem to correspond well to the concept
+# of not wanting to walk too much without asking for totally ridiculous itineraries, but this
+# observation should in no way be taken as scientific or definitive. Your mileage may vary.*/
+walkReluctance:2.0
+
+# Used instead of walk reluctance for stairs
+stairsReluctance:2.0
+
+# How much worse is waiting for a transit vehicle than being on a transit vehicle, as a multiplier. The default value treats wait and on-vehicle
+# time as the same.
+#
+# It may be tempting to set this higher than walkReluctance (as studies often find this kind of preferences among
+# riders) but the planner will take this literally and walk down a transit line to avoid waiting at a stop.
+# This used to be set less than 1 (0.95) which would make waiting offboard preferable to waiting onboard in an
+# interlined trip. That is also undesirable.
+#
+# If we only tried the shortest possible transfer at each stop to neighboring stop patterns, this problem could disappear.
+waitReluctance:1.0
+
+# How much less bad is waiting at the beginning of the trip (replaces waitReluctance on the first boarding)
+waitAtBeginningFactor:0.4
+
+# Maximum number of transfers a user is willing to do
+# DOESN'T SEEM TO WORK
+# maxTransfers:2
+
+# The deceleration speed of an automobile, in meters per second per second.
+# 2.9 m/s/s: 65 mph - 0 mph in 10 seconds
+# DOESN'T WORK
+# carDecelerationSpeed:2.9
+
+# The acceleration speed of an automobile, in meters per second per second.
+# 2.9 m/s/s: 0 mph to 65 mph in 10 seconds
+# DOESN'T WORK
+# carAccelerationSpeed:2.9
+    
+# When true, realtime updates are ignored during this search.
+ignoreRealtimeUpdates:false

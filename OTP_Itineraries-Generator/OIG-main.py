@@ -4,17 +4,20 @@ import sys
 import os, glob
 import csv
 import errno
+import argparse
+import math
+from time import gmtime, strftime
 try:
     # We want the script to run even if we don't have a CmdPrinter
     from CmdPrinter import printrp
     found_CmdPrinter = True
 except ModuleNotFoundError:
     found_CmdPrinter = False
-    
-try : 
+
+try :
     # We want the script to run even if we don't have a Timer
-    import Timer 
-except ModuleNotFoundError: 
+    import Timer
+except ModuleNotFoundError:
     pass
 
 import time
@@ -29,117 +32,125 @@ PERCEIVED_WALK_FACTOR = 1.5
 PERCEIVED_WAIT_FACTOR = 2
 PERCEIVED_TRANSIT_FACTOR = 1.25
 FILE_OPTION_NAME = 'OIG_options.txt'
-TRIP_DATE = '2018/04/02'
+DEFAULT_OUTPUT = 'trips_data['+strftime("%Y%m%d%H%M%S", gmtime())+'].csv'
+DEFAULT_JSON_OUTPUT = 'OIG_jsonResults['+strftime("%Y%m%d%H%M%S", gmtime())+']'
+DEFAULT_PORT = '8080'
+DEFAULT_YEAR = '2017'
+DEFAULT_MONTH = '12'
+DEFAULT_DAY = '04'
+DEFAULT_HOUR = '8'
+DEFAULT_MINUTE = '00'
 
 def find_files(path, extension = 'csv', min = 2):
     """
     Get all the file of a given extension (default is .csv) in a directory.
-    Raises an OSError if less than min are find
+    Error if less than min are find
     :param path: directory where the files are
     :param extension: extension of the files that needs to be find (without the point e.g. 'csv' and NOT '.csv')
-    :param min: minimum number of files that needs to be find (if less raise OSError)
+    :param min: minimum number of files that needs to be find (if less Error)
     :return: files with the given extension
     """
     os.chdir(path)  # go to the directory of the path
     files = [i for i in glob.glob('*.{}'.format(extension))]  # place all the csv files in this array
 
     if len(files) < min:
-        raise OSError("Couldn't find at least " + str(min) + " " + extension + " file(s)")
+        print("ERROR - Couldn't find at least " + str(min) + " " + extension + " file(s)")
+        exit()
 
     return files
 
+def verify_file_extension(path, extension = 'csv'):
+    return path[-len(extension):] == extension;
 
-def create_od(csv_files):
-    """
-    Create python dict object that holds the data from the given origin/destination csv files
-    :param csv_files: the files containing the OD data (2 or 3 csv files are needed in a specific format explained in the README)
-    :return: dicts that contains the files data
-    """
+
+
+def create_od_single_file(od_survey):
     ori = dict()
     des = dict()
     hredep = dict()
-    ids = []
-    tmp = []
+    date = dict()
+    args = dict() # to store non-classic parameters (such as age, sex, salary, etc.)
 
     print("======================================================")
     print("= Extracting Origin/Destionation data from csv files =")
     print("======================================================")
 
-    for file in csv_files:
-        with open(file, 'r', newline='') as csvfile:
-            spamreader = csv.reader(csvfile, delimiter=',')
-            if file.__contains__('ori'):  # file name needs to contain 'ori'
 
-                print("     ===============")
-                print("     = Origin file =")
-                print("     ===============")
-                i = 0
+    with open(od_survey, 'r', newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        i = 0
 
-                numline = sum(1 for line in csvfile) - 1
+        numline = sum(1 for line in csvfile) - 1
 
-                csvfile.seek(0)
-                iter_spamreader = iter(spamreader)
-                next(iter_spamreader)  # skip title row
-                for row in iter_spamreader:
-                    id = row[0]
+        csvfile.seek(0)
+        for row in reader:
+            try :
+                orilon = row['orilon']
+                orilat = row['orilat']
+                ori[i] = {'orilon':orilon, 'orilat':orilat}
+                deslon = row['deslon']
+                deslat = row['deslat']
+                des[i] = {'deslon':deslon, 'deslat':deslat}
+            except KeyError:
+                print("ERROR - Missing Origin/Destination coordinates.  "
+                               "Make sure the headers for OD coordinates are 'orilon', 'orilat', 'deslon', 'deslat'")
 
-                    ids.append(id)  # used to add an id to hredep if not already included in hours csv file
+            try :
+                year = row['year']
+            except KeyError:
+                if verbose:
+                    print("WARN - Line ", i, " : No column 'year' found.  Used default ", DEFAULT_YEAR)
+                year = DEFAULT_YEAR
 
-                    lon = row[1]
-                    lat = row[2]
-                    ori[id] = (lon, lat)
-                    printrp('     ( ' + str(i) + ' / ' + str(numline) + ' )') if found_CmdPrinter else print(i)
-                    i+=1
-                print('     ( ' + str(i) + ' / ' + str(numline) + ' )')
+            try :
+                month = row['month']
+            except KeyError:
+                if verbose:
+                    print("WARN - Line ", i, " : No column 'month' found.  Used default ", DEFAULT_MONTH)
+                month = DEFAULT_MONTH
 
-            if file.__contains__('des'):  # file name needs to contain 'des'
+            try :
+                day = row['day']
+            except KeyError:
+                if verbose:
+                    print("WARN - Line ", i, " : No column 'day' found.  Used default ", DEFAULT_DAY)
+                day = DEFAULT_DAY
 
-                numline = sum(1 for line in csvfile) - 1
+            date[i] = {'year':year, 'month':month, 'day':day}
 
-                print("     ====================")
-                print("     = Destination file =")
-                print("     ====================")
-                i = 0
+            try:
+                hour = row['hour']
+            except KeyError:
+                if verbose:
+                    print("WARN - Line ", i, " : No column 'hour' found.  Used default ", DEFAULT_HOUR)
+                hour = DEFAULT_HOUR
 
-                csvfile.seek(0)
-                iter_spamreader = iter(spamreader)
-                next(iter_spamreader)  # skip title row
-                for row in spamreader:
-                    id = row[0]
-                    lon = row[1]
-                    lat = row[2]
-                    des[id] = (lon, lat)
-                    printrp('     ( ' + str(i) + ' / ' + str(numline) + ' )') if found_CmdPrinter else print(i)
-                    i += 1
-                print('     ( ' + str(i) + ' / ' + str(numline) + ' )')
-            if file.__contains__('h'):
-                for row in spamreader:
-                    tmp.append(row)  # do later to make sure that the default ids are set
+            try:
+                minute = row['minute']
+            except KeyError:
+                if verbose:
+                    print("WARN - Line ", i, " : No column 'minute' found.  Used default ", DEFAULT_MINUTE)
+                minute = DEFAULT_MINUTE
 
-    i = 0
-    # hours file
-    ## note that if no hours file is given, the loop will not take place (since len(tmp) would be 0)
-    if tmp:
-        print("     ==============")
-        print("     = Hours file =")
-        print("     ==============")
-    for row in tmp:
-        if len(row) < 3:
-            id = ids[i]
-            hour = row[0]
-            minute = row[1]
-        elif len(row) == 3:
-            id = row[0]
-            hour = row[1]
-            minute = row[2]
-        hredep[id] = (hour, minute)
-        i += 1
-        printrp('     ( ' + str(i) + ' / ' + str(len(tmp)) + ' )') if found_CmdPrinter else print(i)
-    print('     ( ' + str(i) + ' / ' + str(len(tmp)) + ' )')
+            hredep[i] = {'hour':hour, 'minute':minute}
 
-    return ori, des, hredep
 
-def download_json_files(ori, des, hredep=[]):
+            tmp_args = dict()
+            for column in row.keys():
+                if column != 'orilon' and column !='orilat' and column !='deslon' \
+                        and column !='deslat' and column !='year' and column !='month' \
+                        and column !='day' and column !='hour' and column !='minute':
+                    tmp_args[column] = row[column]
+            args[i] = tmp_args
+            i += 1
+            printrp('( ' + str(i) + ' / ' + str(numline) + ' )') if found_CmdPrinter else print(i)
+
+        print('( ' + str(i) + ' / ' + str(numline) + ' )')
+
+    return ori, des, date, hredep, args
+
+
+def download_json_files(ori, des, date, hredep, args):
     """
     Wrapper method to clean the code.
     Calls all the methods needed to download the JSON files from OTP API
@@ -156,16 +167,26 @@ def download_json_files(ori, des, hredep=[]):
     for id in ori.keys():  # just so we can get all the ids (could have been des.keys() or hredep.keys())
         if download_json:
             # don't retrieve the data from OTP API if the user specifies it
-            url = build_url(ori[id][0], ori[id][1], des[id][0], des[id][1], hredep[id][0], hredep[id][1])
-            extract_json(url, id, make_dir("OIG_jsonResults"))
+            url = build_url(ori[id]['orilon'], ori[id]['orilat'],
+                            des[id]['deslon'], des[id]['deslat'],
+                            date[id]['year'], date[id]['month'], date[id]['day'],
+                            hredep[id]['hour'], hredep[id]['minute'],
+                            args[id])
+            try :
+                extract_json(url, id, make_dir(json_output))
+            except OSError:
+                print("ERROR : OTP is not currently running on the given port")
+                exit();
 
             printrp('( ' + str(i) + ' / ' + str(len(ori)) + ' )') if found_CmdPrinter else print(i)
             i += 1
+    if download_json:
+        print('( ' + str(i) + ' / ' + str(len(ori)) + ' )')
+    else:
+        print("Already downloaded")
 
-    print('( ' + str(i) + ' / ' + str(len(ori)) + ' )')
 
-
-def build_url(ori_lon, ori_lat, des_lon, des_lat, hour='8', minute='00'):
+def build_url(ori_lon, ori_lat, des_lon, des_lat, year, month, day, hour, minute, args={}):
     """
     Build the URL from which the data will be retrieve.
     This is where we take into account the options in the Options txt file
@@ -178,7 +199,7 @@ def build_url(ori_lon, ori_lat, des_lon, des_lat, hour='8', minute='00'):
     :return: The URL from from where the data can be retrieved
     """
     options = dict()
-    with open(FILE_OPTION_NAME, 'r', newline='') as file:
+    with open(option_file, 'r', newline='') as file:
         # Read the options file
         for line in file:
             if line[0] == '#': # if the first character of a line is '#' skip it
@@ -190,14 +211,17 @@ def build_url(ori_lon, ori_lat, des_lon, des_lat, hour='8', minute='00'):
     base_URL = 'localhost:' + port + '/otp/routers/default/plan'
     fromPlace = ori_lon + ',' + ori_lat
     toPlace = des_lon + ',' + des_lat
+    date = year + '/' + month + '/' + day
     time = hour + ':' + minute + ':00'
 
-    url = 'http://' + base_URL + '?fromPlace=' + fromPlace + '&toPlace=' + toPlace + '&date=' + TRIP_DATE + '&time=' + time
+    url = 'http://' + base_URL + '?fromPlace=' + fromPlace + '&toPlace=' + toPlace + '&date=' + date + '&time=' + time
     for option_name in options.keys():
         option = options[option_name]
         url += '&' + option_name + '=' + option
     if not 'mode' in url:
         url += '&mode=TRANSIT,WALK'
+    for key in args.keys():
+        url+= '&' + key + '=' + args[key]
 
     return url
 
@@ -214,15 +238,16 @@ def extract_json(url, tripID, output_path):
     try :
         testfile.retrieve(url, output_path + "\\" + file_name)  # place URL json file into a local json file
     except OSError:
-        raise OSError("Couldn't extract data from URL.  Make sure OTP server is running on the given server port")
+        print("ERROR - Couldn't extract data from URL.  Make sure OTP server is running on the given server port")
+        exit()
 
 
 def get_json_files_data(path, min = 1):
     """
     Get all the file of a given extension (default is .csv) in a directory.
-    Raises an OSError if less than min are find
+    Error if less than min are find
     :param path: directory where the files are
-    :param min: minimum number of files that needs to be find (if less raise OSError)
+    :param min: minimum number of files that needs to be find (if less Error)
     :return: files with the given extension
     """
 
@@ -268,10 +293,7 @@ def write_csv_file(csv_output_file, full_data):
     :return:
     """
     j = 0
-    csv_output_path = make_dir("OIG_csvResults")
-
-    if csv_output_file.split('.')[-1] != 'csv':
-        raise OSError("File name must end with '.csv'")
+    csv_output_path = make_dir('OIG_csvResults')
 
     csv_file_path = csv_output_path + '\\' + csv_output_file
 
@@ -351,12 +373,38 @@ def write_csv_file(csv_output_file, full_data):
                                             str(boarding_stop_ids),
                                             str(debarquer_stop_ids)])
     except PermissionError:
-        raise PermissionError('The file might be used by another app.')
+        print('ERROR - Cannot write to CSV file.  The file might be used by another app.')
+        exit()
     print('( ' + str(j-1) + ' / ' + str(len(full_data) - 1) + ' )')
 
 def get_perceived_time(walkTime, transitTime, waitingTime):
     return (walkTime * PERCEIVED_WALK_FACTOR) + (transitTime * PERCEIVED_TRANSIT_FACTOR) + (waitingTime * PERCEIVED_WAIT_FACTOR)
 
+def define_args():
+    parser = argparse.ArgumentParser(description="This scripts takes in input an origin/destination csv file and outputs a csv files with the trips information")
+    parser.add_argument('od_path', nargs='?',
+                        help='Path to the OD file')
+    parser.add_argument('--port', nargs="?",
+                        help='Port on which OTP is currently running')
+    parser.add_argument('-v', '--verbose', dest='verbose', action='store_true',
+                        help="Increase output verbosity")
+    parser.add_argument('--csv-output', dest='output', nargs="?",
+                        help="Name of the outputed CSV file (will still be in the OIG_csvResults directory) (default : " + DEFAULT_OUTPUT + ')')
+    parser.add_argument('--json-output', dest='json_output', nargs="?",
+                        help="Name of the directory for the outputed JSON files (default : " + DEFAULT_OUTPUT + ')')
+    parser.add_argument('--option-file', dest='option_file', nargs="?",
+                        help="Path to the option txt file (default : " + FILE_OPTION_NAME + ')')
+    parser.add_argument('--download', dest='download_json', action='store_true',
+                        help="If the json data should be downloaded")
+    parser.add_argument('--no-download', dest='download_json', action='store_false',
+                        help="If the json data should not be downloaded (for this to work, there needs to be predownloaded json data in the OIG_jsonResults directory)")
+    parser.set_defaults(download_json=True)
+    parser.set_defaults(verbose=False)
+    parser.set_defaults(output=DEFAULT_OUTPUT)
+    parser.set_defaults(json_output=DEFAULT_JSON_OUTPUT)
+    parser.set_defaults(option_file=FILE_OPTION_NAME)
+
+    return parser.parse_args()
 
 ## Test URL :
 ## http://localhost:8080/otp/routers/default/plan?fromPlace=48.40915,-71.04996&toPlace=48.41428,-71.06996&date=2017/12/04&time=8:00:00&mode=TRANSIT,WALK
@@ -365,43 +413,65 @@ def get_perceived_time(walkTime, transitTime, waitingTime):
 ## localhost:8080/otp/routers/default/isochrone?layers=traveltime&styles=mask&batch=true&fromPlace=48.428766,-71.067439&date=2017/12/04&time=10:00:00&mode=TRANSIT&walkSpeed=3&maxWalkDistance=1000&precisionMeters=5000&cutoffSec=6900
 
 ## Given parameters :
-# 1. path where the OD files are located
+# 1. path where the OD file is located
 # 2. (Optional) Server port running OTP
-# 3. (Optional) 'false' if we don't wan to download the json files
+# 3. (Optional) 'false' if we don't want to download the json files
 
 path = sys.argv[1] ## to be able to give the path as an argument in command line
 
-download_json = True # set to False if the wanted JSON files are already downloaded on the computer
-# TODO : remove this?
 
-try:
-    port = int(sys.argv[2]) # the server port can be given as argument, default is 8080
-except IndexError:
-    port = '8080'
-except ValueError:
-    download_json = sys.argv[2] != 'false'
+args = define_args();
+verbose = args.verbose
+try :
+    float(args.port)
+    port = args.port
+except ValueError :
+    port = DEFAULT_PORT
+    if verbose:
+        print('Invalid port, using default : ', DEFAULT_PORT)
+except TypeError :
+    port = DEFAULT_PORT
+    if verbose:
+        print('Using default port : ', DEFAULT_PORT)
 
-try:
-    # this raise an IndexError unless both the server port and the download_json arguments are given
-    download_json = sys.argv[3] != 'false'
-except IndexError:
-    pass
+download_json = args.download_json
+if download_json:
+    json_output = args.json_output
+    for dirpath, dirnames, files in os.walk(json_output):
+        if files:
+            print(dirpath, 'has files')
+        if not files:
+            print(dirpath, 'is empty')
+
+
+csv_output = args.output
+if csv_output.split('.')[-1] != 'csv':
+    print("ERROR - Output file name must end with '.csv'")
+    exit()
+option_file = args.option_file
+if option_file.split('.')[-1] != 'txt':
+    print("ERROR - Option file name must end with '.txt'")
+    exit()
 
 extension = 'csv'
 
 ret_dir = os.getcwd() # current directory to return to later
 
-csv_files = find_files(path, extension, 2)
-ori, des, hredep = create_od(csv_files)
+# csv_files = find_files(path, extension, 2)
 
-os.chdir(ret_dir) # return to local directory
+if (verify_file_extension(path, extension)):
+    #ori, des, hredep = create_od(path)
+    ori, des, date, hredep, args = create_od_single_file(path)
 
-download_json_files(ori, des, hredep)
+    os.chdir(ret_dir) # return to local directory
 
-data = get_json_files_data('OIG_jsonResults')
+    download_json_files(ori, des, date, hredep, args)
 
-os.chdir(ret_dir)
+    data = get_json_files_data(json_output)
 
-write_csv_file('data_scenario5.csv', data)
+    os.chdir(ret_dir)
 
-
+    write_csv_file(csv_output, data)
+else :
+    print("Error - Input file name must end with '.csv'")
+    exit()

@@ -50,7 +50,11 @@ def find_files(path, extension = 'csv', min = 2):
     :param min: minimum number of files that needs to be find (if less Error)
     :return: files with the given extension
     """
-    os.chdir(path)  # go to the directory of the path
+    try:
+        os.chdir(path)  # go to the directory of the path
+    except FileNotFoundError:
+        print("ERROR - Couldn't find file " + path)
+        exit()
     files = [i for i in glob.glob('*.{}'.format(extension))]  # place all the csv files in this array
 
     if len(files) < min:
@@ -390,18 +394,18 @@ def define_args():
                         help="Increase output verbosity")
     parser.add_argument('--csv-output', dest='output', nargs="?",
                         help="Name of the outputed CSV file (will still be in the OIG_csvResults directory) (default : " + DEFAULT_OUTPUT + ')')
-    parser.add_argument('--json-output', dest='json_output', nargs="?",
+    parser.add_argument('--json-dir', dest='json_dir', nargs="?",
                         help="Name of the directory for the outputed JSON files (default : " + DEFAULT_OUTPUT + ')')
     parser.add_argument('--option-file', dest='option_file', nargs="?",
                         help="Path to the option txt file (default : " + FILE_OPTION_NAME + ')')
     parser.add_argument('--download', dest='download_json', action='store_true',
-                        help="If the json data should be downloaded")
+                        help="If the json data should be downloaded (default : download)")
     parser.add_argument('--no-download', dest='download_json', action='store_false',
-                        help="If the json data should not be downloaded (for this to work, there needs to be predownloaded json data in the OIG_jsonResults directory)")
+                        help="If the json data should not be downloaded (default : download) (for this to work, there needs to be predownloaded json data and --json-dir must be specified)")
     parser.set_defaults(download_json=True)
     parser.set_defaults(verbose=False)
     parser.set_defaults(output=DEFAULT_OUTPUT)
-    parser.set_defaults(json_output=DEFAULT_JSON_OUTPUT)
+    parser.set_defaults(json_dir=DEFAULT_JSON_OUTPUT)
     parser.set_defaults(option_file=FILE_OPTION_NAME)
 
     return parser.parse_args()
@@ -428,21 +432,23 @@ try :
 except ValueError :
     port = DEFAULT_PORT
     if verbose:
-        print('Invalid port, using default : ', DEFAULT_PORT)
+        print('WARN - Invalid port, using default : ', DEFAULT_PORT)
 except TypeError :
     port = DEFAULT_PORT
     if verbose:
-        print('Using default port : ', DEFAULT_PORT)
+        print('INFO - Using default port : ', DEFAULT_PORT)
 
 download_json = args.download_json
+json_output = args.json_dir
 if download_json:
-    json_output = args.json_output
     for dirpath, dirnames, files in os.walk(json_output):
         if files:
-            print(dirpath, 'has files')
-        if not files:
-            print(dirpath, 'is empty')
-
+            print('ERROR - JSON output directory is not empty.')
+            exit()
+else:
+    if json_output == DEFAULT_JSON_OUTPUT:
+        print('ERROR - If the option no-download is defined, the JSON directory must be given (json-dir)')
+        exit()
 
 csv_output = args.output
 if csv_output.split('.')[-1] != 'csv':
@@ -452,6 +458,15 @@ option_file = args.option_file
 if option_file.split('.')[-1] != 'txt':
     print("ERROR - Option file name must end with '.txt'")
     exit()
+
+if verbose:
+    if json_output == DEFAULT_JSON_OUTPUT:
+        print("INFO - Using default JSON directory : " + json_output)
+    if option_file == FILE_OPTION_NAME:
+        print("INFO - Using default option file path : " + option_file)
+    if csv_output == DEFAULT_OUTPUT:
+        print("INFO - Using default CSV output file : " + csv_output)
+
 
 extension = 'csv'
 
@@ -473,5 +488,5 @@ if (verify_file_extension(path, extension)):
 
     write_csv_file(csv_output, data)
 else :
-    print("Error - Input file name must end with '.csv'")
+    print("ERROR - Input file name must end with '.csv'")
     exit()

@@ -24,23 +24,23 @@ The csv file is placed in a directory called OIG_csvResults itself placed at the
 
 A text file containing the trip options may be included in the OIG project directory.  Here's how to format it:
 
-    - Any line starting with the character '#' will be skipped (as well as empty lines)
-        
-      Trip options must be written as 'option_name:value' with no space at any place in the line.
-    option_name must be typed exactly as in the following list, otherwise it will have no effect.
-      
-        - The trip options are (each are explained in the given options file) :
-      	    -   maxWalkDistance, 
-              - maxHours, 
-              - mode, 
-              - numItineraries, 
-              - walkSpeed, 
-              - carSpeed,
-              - walkReluctance, 
-              - stairsReluctance, 
-              - waitReluctance, 
-              - waitAtBeginningFactor,  
-              - ignoreRealtimeUpdates
+- Any line starting with the character '#' will be skipped (as well as empty lines)
+  
+- Trip options must be written as 'option_name:value' with no space at any place in the line.
+  option_name must be typed exactly as in the following list, otherwise it will have no effect.
+  
+The trip options are (each are explained in the given options file) :
+    -   maxWalkDistance, 
+    - maxHours, 
+    - mode, 
+    - numItineraries, 
+    - walkSpeed, 
+    - carSpeed,
+    - walkReluctance, 
+    - stairsReluctance, 
+    - waitReluctance, 
+    - waitAtBeginningFactor,  
+    - ignoreRealtimeUpdates
 
 Two optional file are contain in OTP_Itineraries-Generator, namely CmdPrinter and Timer.  The first one is a
 pretty printer for the loading process and the second is a writes the Elapsed Time of the process at the end.
@@ -73,35 +73,37 @@ http://localhost:8080/otp/routers/default/plan?fromPlace=48.40915,-71.04996&toPl
 
 (5) Run OTP_Itineraries-Generator
 ```
-	py OIG-main.py [-h] [--port [PORT]] [-v] [--csv-output [OUTPUT]]
-                   [--json-output [JSON_OUTPUT]] [--option-file [OPTION_FILE]]
+py OIG-main.py [-h] [--port [PORT]] [-v] [--csv-output [OUTPUT]]
+                   [--json-dir [JSON_DIR]] [--option-file [OPTION_FILE]]
                    [--download] [--no-download]
                    [od_path]
 
-	This scripts takes in input an origin/destination csv file and outputs a csv
-	files with the trips information
-	
-	positional arguments:
-  	  od_path               Path to the OD file
+This scripts takes in input an origin/destination csv file and outputs a csv
+files with the trips information
 
-	optional arguments:
-	  -h, --help            show this help message and exit
-	  --port [PORT]         Port on which OTP is currently running
-	  -v, --verbose         Increase output verbosity
-	  --csv-output [OUTPUT]
-	    	                Name of the outputed CSV file (will still be in the
-	            	        OIG_csvResults directory) (default :
-	                    	trips_data[20190430190152].csv)
-	  --json-output [JSON_OUTPUT]
-	    	                Name of the directory for the outputed JSON files
-	            	        (default : trips_data[20190430190152].csv)
-	  --option-file [OPTION_FILE]
-	    	                Path to the option txt file (default :
-	            	        OIG_options.txt)
-	  --download            If the json data should be downloaded
-	  --no-download         If the json data should not be downloaded (for this to
-	    	                work, there needs to be predownloaded json data in the
-	            	        OIG_jsonResults directory)
+positional arguments:
+  od_path               Path to the OD file
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --port [PORT]         Port on which OTP is currently running
+  -v, --verbose         Increase output verbosity
+  --csv-output [OUTPUT]
+                        Name of the outputed CSV file (will still be in the
+                        OIG_csvResults directory) (default :
+                        trips_data[20190430193828].csv)
+  --json-dir [JSON_DIR]
+                        Name of the directory for the outputed JSON files
+                        (default : trips_data[20190430193828].csv)
+  --option-file [OPTION_FILE]
+                        Path to the option txt file (default :
+                        OIG_options.txt)
+  --download            If the json data should be downloaded (default :
+                        download)
+  --no-download         If the json data should not be downloaded (default :
+                        download) (for this to work, there needs to be
+                        predownloaded json data and --json-dir must be
+                        specified)
 ```
 
 

@@ -32,7 +32,7 @@ PERCEIVED_WALK_FACTOR = 1.5
 PERCEIVED_WAIT_FACTOR = 2
 PERCEIVED_TRANSIT_FACTOR = 1.25
 FILE_OPTION_NAME = 'OIG_options.txt'
-DEFAULT_OUTPUT = 'trips_data['+strftime("%Y%m%d%H%M%S", gmtime())+'].csv'
+DEFAULT_OUTPUT = os.path.join('OIG_csvResults','trips_data['+strftime("%Y%m%d%H%M%S", gmtime())+'].csv')
 DEFAULT_JSON_OUTPUT = 'OIG_jsonResults['+strftime("%Y%m%d%H%M%S", gmtime())+']'
 DEFAULT_PORT = '8080'
 DEFAULT_YEAR = '2017'
@@ -297,9 +297,16 @@ def make_dir(name='results'):
     :param name: name of the created folder (default is 'results')
     :return: path of the newly created directory
     """
-    print(os.getcwd())
-    output_path = os.path.join(os.getcwd(), name)
-    directory = os.path.dirname(os.path.join(output_path, 'toto'))  # doesn't work w/o 'toto'
+    if os.path.isabs(name):
+        output_path = name
+    else:
+        output_path = os.path.join(os.getcwd(), name)
+
+    if ('.' not in output_path):
+        directory = os.path.dirname(os.path.join(output_path, 'toto'))  # doesn't work w/o 'toto'
+    else :
+        directory = os.path.dirname(output_path);
+
     try:
         os.makedirs(directory)
     except OSError as e:
@@ -316,10 +323,9 @@ def write_csv_file(csv_output_file, full_data):
     :return:
     """
     j = 0
-    csv_output_path = make_dir('OIG_csvResults')
+    csv_file_path = make_dir(csv_output_file)
 
-    csv_file_path = os.path.join(csv_output_path, csv_output_file)
-
+    # csv_file_path = os.path.join(csv_file_path, csv_output_file)
     try:
         with open(csv_file_path, 'w', newline='') as csvfile:
             csvwriter = csv.writer(csvfile, delimiter=',')
@@ -398,6 +404,8 @@ def write_csv_file(csv_output_file, full_data):
     except PermissionError:
         print('ERROR - Cannot write to CSV file.  The file might be used by another app.')
         exit()
+    except OSError:
+        print("ERROR - Couldn't open file " + csv_file_path + ". Please verify the file's permissions.")
     print('( ' + str(j-1) + ' / ' + str(len(full_data) - 1) + ' )')
 
 def get_perceived_time(walkTime, transitTime, waitingTime):

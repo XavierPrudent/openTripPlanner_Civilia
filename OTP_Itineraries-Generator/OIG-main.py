@@ -236,15 +236,33 @@ def extract_json(url, tripID, output_path):
     :param url: URL from which to retrieve the data
     :return: data extracted from the URL as a python object (ie. dict)
     """
-    testfile = urllib.request.URLopener()
+    sock = urllib.request.urlopen(url)
     file_name = str(tripID) + ".json"
+    full_path = os.path.join(output_path, file_name)
+    make_dir(output_path);
 
     try :
-        testfile.retrieve(url, output_path + "\\" + file_name)  # place URL json file into a local json file
+        myfile = sock.read()
     except OSError:
         print("ERROR - Couldn't extract data from URL.  Make sure OTP server is running on the given server port")
         exit()
 
+    try:
+        writeFileObj = open(full_path, 'w+')
+        writeFileObj.write(format_json(str(myfile)))
+        writeFileObj.close()
+    except OSError:
+        print("ERROR - Couldn't write to file \n" + full_path + "\nMake sure it isn't currently used.")
+        exit()
+
+
+def format_json(json_data):
+    """
+    Trims a json string so it starts with a '{' and ends with a '}'
+    :param json_data: json string to format
+    :return: formated json string
+    """
+    return json_data[json_data.index('{'):json_data.rfind('}')+1]
 
 def get_json_files_data(path, min = 1):
     """
@@ -279,8 +297,9 @@ def make_dir(name='results'):
     :param name: name of the created folder (default is 'results')
     :return: path of the newly created directory
     """
-    output_path = os.getcwd() + '\\' + name
-    directory = os.path.dirname(output_path + '\\toto')  # doesn't work w/o 'toto'
+    print(os.getcwd())
+    output_path = os.path.join(os.getcwd(), name)
+    directory = os.path.dirname(os.path.join(output_path, 'toto'))  # doesn't work w/o 'toto'
     try:
         os.makedirs(directory)
     except OSError as e:
@@ -299,7 +318,7 @@ def write_csv_file(csv_output_file, full_data):
     j = 0
     csv_output_path = make_dir('OIG_csvResults')
 
-    csv_file_path = csv_output_path + '\\' + csv_output_file
+    csv_file_path = os.path.join(csv_output_path, csv_output_file)
 
     try:
         with open(csv_file_path, 'w', newline='') as csvfile:
